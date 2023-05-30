@@ -1,0 +1,171 @@
+---
+title: "Tarea 2: Procesamiento de datos geográficos"
+author: Miriana Lucía Guerrero Dinarte
+format:
+  html:
+    toc: true
+    toc_float: true
+    lang: Es
+---
+
+## Introducción
+
+El trabajo a continuación corresponde a la segunda tarea del curso de Procesamiento de Datos Geográficos de la Escuela de Geografía en la Universidad de Costa Rica; consta de una página web desarrollada en Quarto, con código en R que procese datos para presentarlos mediante tablas y gráficos, publicada en Internet.
+
+Los datos empleados provienen del [Coffee Quality Institute (CQI)](https://www.coffeeinstitute.org/?gclid=Cj0KCQjw98ujBhCgARIsAD7QeAiiaexgKoAWgAs35U0Su1Ph1fgpKOYwBhZV3QdJ3ZXVefEHycC-APUaAgniEALw_wcB), extraídos por [*Fatih Boyar*](https://github.com/fatih-boyar/coffee-quality-data-CQI) desde su repositorio y modificados por el profesor del curso; se presentan a continuación una tabla interactiva para el conjunto de datos *coffee_quality:* y 3 gráficos interactivos (Histograma, Gráfico de Dispersión y Gráfico de cajas o Bloxplot) según las variables seleccionadas.
+
+## Carga de bibliotecas
+
+```{r}
+#| label: carga-bibliotecas
+#| warning: false
+#| code-fold: true
+#| message: false
+
+library(tidyverse)
+library(plotly)
+library(dplyr)
+library(DT)
+library(ggthemes)
+library(hrbrthemes)
+```
+
+## Carga de datos en CSV
+
+```{r}
+#| label: carga-datos-csv
+#| warning: false
+#| code-fold: true
+#| message: false
+
+coffee_quality <- 
+  read.csv("https://raw.githubusercontent.com/gf0604-procesamientodatosgeograficos/2023-i/main/datos/cqi/coffee-quality.csv")
+```
+
+## Datos modificados del CSV
+
+```{r}
+#| label: carga-nuevos-datos-csv
+#| warning: false
+#| code-fold: true
+#| message: false
+
+coffee_quality_filter <- coffee_quality[, c("Country_of_Origin", "Variety", "Color", "Altitude", "Total_Cup_Points")]
+```
+
+## Tabla de contenidos
+
+```{r}
+#| label: tabla-contenidos
+#| warning: false
+#| code-fold: true
+#| message: false
+
+coffee_quality_filter |>
+  select("País de origen" = Country_of_Origin,
+         "Variedad" = Variety,
+         "Color" = Color,
+         "Altitud" = Altitude,
+         "Puntaje total por taza" = Total_Cup_Points)|>
+  datatable(
+    options = list(
+      pageLength = 25,
+      language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Spanish.json')
+    )
+  )
+```
+
+## Gráficos estadísticos
+
+### Histograma
+
+###### Histograma para la distribución de la variable Total_Cup_Points (puntaje total):
+
+```{r}
+#| label: gráfico-histograma-cafe
+#| warning: false
+#| message: false
+#| code-fold: true
+
+histograma_ggplot2 <-
+  coffee_quality |>
+  ggplot(aes(x = Total_Cup_Points)) +
+  geom_histogram(
+    aes(
+      text = paste0(
+        "Puntaje total por taza: ", (after_stat(x)), "\n",
+        "Frecuencia: ", after_stat(count)
+      ),
+      y = after_stat(density)
+    ),
+    color = "black", fill = "orange",
+    bins = 20
+  ) +
+   geom_density() +
+  scale_y_continuous(labels = scales::label_comma()) +
+  ggtitle("Histograma de la distribución del puntaje total 
+          por taza de café según el CQI") +
+  xlab("Puntaje total") +
+  ylab("Frecuencia") +
+  labs(caption = "Fuente: Coffee Quality Institute (CQI).") +
+  theme_economist()
+
+ggplotly(histograma_ggplot2, tooltip = "text") |>
+  config(locate = "es")
+```
+
+### Gráfico de dispersión
+
+###### Gráfico de dispersión de Altitude vs Total_Cup_Points:
+
+```{r}
+#| label: gráfico-dispersion-cafe
+#| warning: false
+#| message: false
+#| code-fold: true
+
+grafico_dispersion_ggplot2 <-
+  coffee_quality_filter |>
+  ggplot(aes(x = reorder(Altitude, Total_Cup_Points), y = Total_Cup_Points)) +
+  geom_point(aes(
+    text = paste0(
+      "Altitud: ", round(Altitude), " m.s.n.m." , "\n",
+                  "Total de puntos por taza de café: ", round(Total_Cup_Points)
+      )
+    )) +
+  geom_smooth(method = "lm") +
+  labs(x="Altitud (m.s.n.m.)", y="Puntaje total por taza de café",
+       title="Gráfico de dispersión de Altitud vs Puntaje total por taza de café",
+       subtitle="Gráfico de dispersión para relacionar las variables _Altitude_ y _Total_Cup_Points_",
+       caption="Fuente: Coffee Quality Institute (CQI).") +
+  scale_y_discrete(limits = c(78:89.33)) +
+  scale_x_discrete(limits = c(139:5400)) +
+   theme_economist()
+
+ggplotly(grafico_dispersion_ggplot2, tooltip = "text") |>
+  config(locale = 'es')
+```
+
+### Gráfico de caja
+
+###### Gráfico de caja que muestre las estadísticas (cuartiles, mínimos, máximos y valores atípicos) de la variable Total_Cup_Points (puntaje total) para cada valor de la variable Color (color):
+
+```{r}
+#| label: gráfico-boxplot-coffee
+#| warning: false
+#| message: false
+#| code-fold: true
+
+grafico_boxplot_ggplo2 <-
+  coffee_quality_filter |>
+  ggplot(aes(x = Color, y = Total_Cup_Points))+
+  geom_boxplot()+
+  ggtitle("Estadísticas del puntaje total por taza de café según el color") +
+  xlab("Color") +
+  ylab("Puntaje total") +
+  labs(caption = "Fuente: Coffee Quality Institute (CQI).") +
+  theme_economist()
+
+ggplotly(grafico_boxplot_ggplo2) |>
+  config(locale = 'es')
+```
